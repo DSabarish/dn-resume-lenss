@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DN-Screener</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --sidebar-bg: #0f172a;
+  --sidebar-w: 220px;
+  --accent: #6366f1;
+  --accent-light: #e0e7ff;
+  --bg: #f1f5f9;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --muted: #64748b;
+  --score-high: #16a34a;
+  --score-high-bg: #dcfce7;
+  --score-mid: #d97706;
+  --score-mid-bg: #fef3c7;
+  --score-low: #dc2626;
+  --score-low-bg: #fee2e2;
+  --shine: #0891b2;
+  --shine-bg: #e0f2fe;
+  --gap: #ea580c;
+  --gap-bg: #fff7ed;
+  --radius: 10px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+/* ── Sidebar ── */
+.sidebar { width: var(--sidebar-w); background: var(--sidebar-bg); position: fixed; top: 0; left: 0; height: 100vh; display: flex; flex-direction: column; z-index: 100; }
+.sidebar-logo { padding: 22px 20px 16px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.sidebar-logo span { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -.5px; }
+.sidebar-logo span em { color: var(--accent); font-style: normal; }
+.sidebar-subtitle { font-size: 11px; color: #64748b; margin-top: 2px; }
+nav { padding: 12px 0; flex: 1; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: #94a3b8; font-size: 14px; cursor: pointer; transition: all .15s; border-left: 3px solid transparent; }
+.nav-item:hover { color: #fff; background: rgba(255,255,255,.05); }
+.nav-item.active { color: #fff; border-left-color: var(--accent); background: rgba(99,102,241,.12); }
+.nav-icon { font-size: 17px; width: 20px; text-align: center; }
+.sidebar-bottom { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,.08); }
+.api-status { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #94a3b8; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; flex-shrink: 0; }
+.status-dot.ok { background: #22c55e; }
+
+/* ── Main ── */
+.main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; }
+.page-header { padding: 28px 32px 0; }
+.page-header h1 { font-size: 22px; font-weight: 700; }
+.page-header p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.page-body { padding: 24px 32px 40px; }
+section { display: none; }
+section.active { display: block; }
+
+/* ── Cards & Grid ── */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: var(--surface); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+.stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.stat-value { font-size: 28px; font-weight: 700; margin-top: 6px; color: var(--text); }
+.stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.card { background: var(--surface); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 20px; }
+.card-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+/* ── Tables ── */
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; padding: 10px 14px; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); background: #f8fafc; border-bottom: 1px solid var(--border); }
+td { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafafa; }
+
+/* ── Score badges ── */
+.score-badge { display: inline-flex; align-items: center; font-weight: 700; font-size: 13px; padding: 3px 10px; border-radius: 20px; }
+.score-badge.high { background: var(--score-high-bg); color: var(--score-high); }
+.score-badge.mid  { background: var(--score-mid-bg);  color: var(--score-mid); }
+.score-badge.low  { background: var(--score-low-bg);  color: var(--score-low); }
+.score-bar-wrap { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.score-bar { height: 100%; border-radius: 3px; transition: width .5s; }
+
+/* ── Pills ── */
+.pill { display: inline-block; font-size: 11.5px; padding: 2px 9px; border-radius: 20px; margin: 2px; }
+.pill-shine { background: var(--shine-bg); color: var(--shine); }
+.pill-gap   { background: var(--gap-bg);   color: var(--gap); }
+.pill-skill { background: #f1f5f9; color: #475569; }
+
+/* ── Candidate result card ── */
+.result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.result-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; gap: 16px; }
+.result-name { font-size: 16px; font-weight: 700; }
+.result-score-wrap { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.big-score { font-size: 34px; font-weight: 800; line-height: 1; }
+.big-score.high { color: var(--score-high); }
+.big-score.mid  { color: var(--score-mid); }
+.big-score.low  { color: var(--score-low); }
+.score-denom { font-size: 15px; color: var(--muted); font-weight: 500; align-self: flex-end; padding-bottom: 4px; }
+.result-summary { font-size: 13.5px; color: #334155; line-height: 1.65; margin-bottom: 14px; }
+.result-exp { font-size: 12.5px; color: var(--muted); font-style: italic; margin-bottom: 14px; }
+.shine-gap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; }
+.shine-gap-col h4 { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+.shine-gap-col.shine h4 { color: var(--shine); }
+.shine-gap-col.gap   h4 { color: var(--gap); }
+.shine-gap-col ul { list-style: none; padding: 0; }
+.shine-gap-col ul li { font-size: 13px; padding: 4px 0; display: flex; align-items: flex-start; gap: 6px; line-height: 1.5; }
+.shine-gap-col.shine ul li::before { content: "✦"; color: var(--shine); font-size: 10px; margin-top: 3px; flex-shrink: 0; }
+.shine-gap-col.gap   ul li::before { content: "○"; color: var(--gap);   font-size: 10px; margin-top: 3px; flex-shrink: 0; }
+.skills-row { margin-top: 14px; padding-top: 14px; border-top: 1px solid #f1f5f9; }
+.skills-row-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 5px; }
+
+/* ── Forms ── */
+.form-row { margin-bottom: 16px; }
+label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #374151; }
+input[type=text], input[type=password], textarea, select {
+  width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 7px;
+  font-size: 14px; font-family: inherit; background: #fff; color: var(--text);
+  transition: border-color .15s; outline: none;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+textarea { resize: vertical; min-height: 120px; }
+.form-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+
+/* ── Buttons ── */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #4f46e5; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-secondary { background: #fff; color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: #f8fafc; }
+.btn-danger { background: #fff; color: var(--score-low); border: 1px solid #fecaca; }
+.btn-danger:hover { background: #fee2e2; }
+.btn-sm { padding: 5px 12px; font-size: 12.5px; }
+
+/* ── Dropzone ── */
+.dropzone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 32px; text-align: center; cursor: pointer; transition: all .2s; background: #fafafa; }
+.dropzone:hover, .dropzone.drag-over { border-color: var(--accent); background: #eef2ff; }
+.dropzone-icon { font-size: 32px; margin-bottom: 8px; }
+.dropzone-text { font-size: 14px; color: var(--muted); }
+.dropzone-text strong { color: var(--text); }
+.file-list { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+.file-chip { display: inline-flex; align-items: center; gap: 6px; background: #e0e7ff; color: #3730a3; font-size: 12.5px; padding: 4px 10px; border-radius: 20px; }
+.file-chip .remove { cursor: pointer; color: #818cf8; font-size: 15px; line-height: 1; }
+
+/* ── Compare ── */
+.compare-select { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.compare-check { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 8px 14px; cursor: pointer; font-size: 13.5px; }
+.compare-check input { accent-color: var(--accent); }
+.compare-cards { display: grid; gap: 16px; }
+.compare-col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.compare-col-name { font-weight: 700; margin-bottom: 6px; font-size: 15px; }
+.compare-score-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.compare-winner-badge { background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+
+/* ── Config ── */
+.config-section { margin-bottom: 28px; padding-bottom: 28px; border-bottom: 1px solid var(--border); }
+.config-section:last-child { border-bottom: none; }
+.config-section h3 { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
+.range-row { display: flex; align-items: center; gap: 12px; }
+.range-val { font-size: 15px; font-weight: 700; color: var(--accent); min-width: 36px; text-align: right; }
+
+/* ── Alert / Toast ── */
+.toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: #fff; padding: 12px 18px; border-radius: 9px; font-size: 14px; z-index: 999; display: none; box-shadow: 0 4px 20px rgba(0,0,0,.25); }
+.toast.show { display: block; }
+.alert { padding: 12px 16px; border-radius: 8px; font-size: 13.5px; margin-bottom: 16px; }
+.alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.alert-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+
+/* ── Loading ── */
+.loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; padding: 24px 0; }
+.spinner { width: 18px; height: 18px; border: 2.5px solid #e2e8f0; border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-text { font-size: 15px; font-weight: 500; }
+.empty-sub  { font-size: 13px; margin-top: 6px; }
+
+/* ── Modal ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 200; display: none; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border-radius: 12px; padding: 28px; width: 520px; max-width: 92vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.modal-header h2 { font-size: 17px; font-weight: 700; }
+.modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--muted); line-height: 1; }
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+/* ── Misc ── */
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+.text-muted { color: var(--muted); }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-gap { display: flex; align-items: center; gap: 8px; }
+.chart-wrap { position: relative; height: 220px; }
+.logo-text-wrap {display: flex; align-items: center; gap: 0.5rem; }
+.img-logo {width: 2rem;}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-text-wrap">
+      <img class="img-logo" src="static\dn_logo_wh.svg" alt="dn logo"/>
+      <span>Resume<em>Lens</em></span>
+    </div>
+    <div class="sidebar-subtitle">Candidate Screener</div>
+  </div>
+  <nav>
+    <div class="nav-item active" onclick="navigate('dashboard')">
+      <span class="nav-icon"> 🟠</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="navigate('screen')">
+      <span class="nav-icon">🟠</span> Screen Candidates
+    </div>
+    <div class="nav-item" onclick="navigate('jobs')">
+      <span class="nav-icon">🟠</span> Job Library
+    </div>
+    <div class="nav-item" onclick="navigate('compare')">
+      <span class="nav-icon">🟠</span> Compare
+    </div>
+    <div class="nav-item" onclick="navigate('config')">
+      <span class="nav-icon">🟠</span> Settings
+    </div>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="api-status">
+      <span class="status-dot" id="api-dot"></span>
+      <span id="api-status-text">Checking...</span>
+    </div>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+
+  <!-- DASHBOARD -->
+  <section id="sec-dashboard" class="active">
+    <div class="page-header">
+      <h1>Dashboard</h1>
+      <p>Overview of your screening activity</p>
+    </div>
+    <div class="page-body">
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="stat-label">Total Screened</div><div class="stat-value" id="stat-total">—</div><div class="stat-sub">all time</div></div>
+        <div class="stat-card"><div class="stat-label">Avg Score</div><div class="stat-value" id="stat-avg">—</div><div class="stat-sub">out of 10</div></div>
+        <div class="stat-card"><div class="stat-label">Top Score</div><div class="stat-value" id="stat-top">—</div><div class="stat-sub">this session</div></div>
+        <div class="stat-card"><div class="stat-label">Screening Runs</div><div class="stat-value" id="stat-runs">—</div><div class="stat-sub">this session</div></div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Recent Runs</div>
+          <div id="recent-runs">
+            <div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">No runs yet</div><div class="empty-sub">Upload resumes to get started</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Top Candidates <span class="text-muted" style="font-weight:400;font-size:13px">(by score)</span></div>
+          <div class="chart-wrap"><canvas id="chart-scores"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">API Usage This Session</div>
+        <div id="usage-stats" style="color:var(--muted);font-size:14px">Loading...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN -->
+  <section id="sec-screen">
+    <div class="page-header">
+      <h1>Screen Candidates</h1>
+      <p>Resume screening starts here.</p>
+    </div>
+    <div class="page-body">
+      <div id="screen-alert"></div>
+
+      <div class="two-col">
+        <!-- Left: Job -->
+        <div>
+          <div class="card">
+            <div class="card-title">Job Description</div>
+            <div class="form-row">
+              <label>Load from library (optional)</label>
+              <select id="jd-library-select" onchange="loadJdFromLibrary()">
+                <option value="">— paste your own below —</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Job Description <span style="color:#ef4444">*</span></label>
+              <textarea id="jd-text" rows="12" placeholder="Paste the full job description here. Be specific about required skills, experience level, and what you're building. The more detail, the better the evaluation."></textarea>
+              <div class="form-hint">Include skills needed, experience level, and what success looks like in this role.</div>
+            </div>
+            <div class="form-row">
+              <label>Run Label (optional)</label>
+              <input type="text" id="run-label" placeholder="e.g. Backend Engineer — April batch">
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Resumes + Options -->
+        <div>
+          <div class="card">
+            <div class="card-title">Resumes</div>
+            <div class="dropzone" id="dropzone" onclick="document.getElementById('resume-input').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+              <div class="dropzone-icon">📄</div>
+              <div class="dropzone-text"><strong>Click to upload</strong> or drag & drop</div>
+              <div class="dropzone-text" style="font-size:12px;margin-top:4px">PDF, DOCX, TXT — up to 20 files</div>
+            </div>
+            <input type="file" id="resume-input" multiple accept=".pdf,.docx,.doc,.txt" style="display:none" onchange="onFileSelect(event)">
+            <div class="file-list" id="file-list"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Options</div>
+            <div class="form-row" style="display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <label style="margin:0">Redact PII before sending to AI</label>
+                <div class="form-hint" style="margin:0">Removes names, email, phone from resume text</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="opt-pii" checked> <span class="toggle-track"></span></label>
+            </div>
+            <div class="form-row" style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+              <div>
+                <label style="margin:0">Bias mitigation</label>
+                <div class="form-hint" style="margin:0">Masks names and school prestige signals</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="opt-bias" checked> <span class="toggle-track"></span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;margin:8px 0 24px">
+        <button class="btn btn-primary" id="run-btn" onclick="runScreening()" style="padding:12px 36px;font-size:15px">
+          Run Screening
+        </button>
+      </div>
+
+      <!-- Results -->
+      <div id="results-section" style="display:none">
+        <div class="divider"></div>
+        <div class="flex-between" style="margin-bottom:16px">
+          <h2 style="font-size:18px;font-weight:700">Results</h2>
+          <div class="flex-gap" id="results-actions"></div>
+        </div>
+        <div id="results-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- JOBS -->
+  <section id="sec-jobs">
+    <div class="page-header">
+      <h1>Job Library</h1>
+      <p>Save and reuse job descriptions across screening runs</p>
+    </div>
+    <div class="page-body">
+      <div class="flex-between" style="margin-bottom:18px">
+        <div id="job-count" class="text-muted" style="font-size:14px"></div>
+        <button class="btn btn-primary" onclick="openJobModal()">+ New Job</button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="jobs-table-wrap">
+          <div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No saved jobs yet</div><div class="empty-sub">Create your first job description to get started</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPARE -->
+  <section id="sec-compare">
+    <div class="page-header">
+      <h1>Compare Candidates</h1>
+      <p>Side-by-side comparison of candidates from your screening runs</p>
+    </div>
+    <div class="page-body">
+      <div class="card">
+        <div class="card-title">Select Candidates (2–6)</div>
+        <div id="compare-select-list">
+          <div class="empty-state"><div class="empty-icon">👤</div><div class="empty-text">No candidates yet</div><div class="empty-sub">Run a screening first</div></div>
+        </div>
+        <div style="margin-top:16px">
+          <button class="btn btn-primary" onclick="runComparison()" id="compare-btn">Compare Selected</button>
+        </div>
+      </div>
+
+      <div id="compare-results"></div>
+    </div>
+  </section>
+
+  <!-- CONFIG -->
+  <section id="sec-config">
+    <div class="page-header">
+      <h1>Settings</h1>
+      <p>Configure your Gemini API key and screening preferences</p>
+    </div>
+    <div class="page-body">
+      <div class="card">
+        <div class="config-section">
+          <h3>🔑 Gemini API Key</h3>
+          <div id="config-setup-alert"></div>
+          <div class="form-row">
+            <label>API Key</label>
+            <div style="display:flex;gap:8px">
+              <input type="password" id="cfg-api-key" placeholder="AIza...">
+              <button class="btn btn-secondary" onclick="toggleApiKeyVisibility()" style="white-space:nowrap;flex-shrink:0" id="toggle-key-btn">Show</button>
+            </div>
+            <div class="form-hint">Get your key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent)">aistudio.google.com</a></div>
+          </div>
+          <div class="form-row">
+            <label>Model</label>
+            <select id="cfg-model">
+              <option value="gemini-3.1-flash-lite-preview">gemini-3.1-flash-lite-preview</option>
+              <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
+              <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+              <option value="gemini-2.5-flash">gemini-2.5-flash (recommended)</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="saveSetupConfig()">Save API Settings</button>
+        </div>
+
+        <div class="config-section">
+          <h3>🎯 Screening Preferences</h3>
+          <div class="form-row">
+            <label>Minimum Score to Show <span id="min-score-val" style="color:var(--accent);font-weight:700"></span></label>
+            <div class="range-row">
+              <span style="font-size:12px;color:var(--muted)">1</span>
+              <input type="range" id="cfg-min-score" min="1" max="9" step="0.5" oninput="document.getElementById('min-score-val').textContent=this.value+'/10'">
+              <span style="font-size:12px;color:var(--muted)">9</span>
+            </div>
+            <div class="form-hint">Candidates below this score are still evaluated but not shown in the shortlist.</div>
+          </div>
+          <div class="form-row">
+            <label>Max Candidates to Return <span id="top-k-val" style="color:var(--accent);font-weight:700"></span></label>
+            <div class="range-row">
+              <span style="font-size:12px;color:var(--muted)">1</span>
+              <input type="range" id="cfg-top-k" min="1" max="25" step="1" oninput="document.getElementById('top-k-val').textContent=this.value">
+              <span style="font-size:12px;color:var(--muted)">25</span>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Max Parallel Workers <span id="workers-val" style="color:var(--accent);font-weight:700"></span></label>
+            <div class="range-row">
+              <span style="font-size:12px;color:var(--muted)">1</span>
+              <input type="range" id="cfg-workers" min="1" max="8" step="1" oninput="document.getElementById('workers-val').textContent=this.value">
+              <span style="font-size:12px;color:var(--muted)">8</span>
+            </div>
+            <div class="form-hint">Higher = faster for large batches, but uses more API quota.</div>
+          </div>
+          <button class="btn btn-primary" onclick="saveScreeningConfig()">Save Preferences</button>
+        </div>
+
+        <div class="config-section">
+          <h3>🗄️ Cache</h3>
+          <div id="cache-metrics" style="font-size:13.5px;color:var(--muted);margin-bottom:12px">Loading...</div>
+          <button class="btn btn-danger btn-sm" onclick="clearCache()">Clear Cache</button>
+          <div class="form-hint" style="margin-top:6px">Cache stores Gemini results for 24h. Clear it if you change the job description significantly.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Job Modal -->
+<div class="modal-overlay" id="job-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="job-modal-title">New Job Description</h2>
+      <button class="modal-close" onclick="closeJobModal()">×</button>
+    </div>
+    <div class="form-row">
+      <label>Job Title / Name <span style="color:#ef4444">*</span></label>
+      <input type="text" id="jm-name" placeholder="e.g. Senior Backend Engineer">
+    </div>
+    <div class="form-row">
+      <label>Full Job Description <span style="color:#ef4444">*</span></label>
+      <textarea id="jm-desc" rows="10" placeholder="Paste the complete job description here..."></textarea>
+    </div>
+    <div class="form-row">
+      <label>Tags (optional, comma-separated)</label>
+      <input type="text" id="jm-tags" placeholder="engineering, backend, senior">
+    </div>
+    <input type="hidden" id="jm-id">
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeJobModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveJob()">Save Job</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<style>
+.toggle { cursor: pointer; }
+.toggle input { display: none; }
+.toggle-track { display: inline-block; width: 38px; height: 22px; background: #cbd5e1; border-radius: 11px; position: relative; transition: background .2s; vertical-align: middle; }
+.toggle-track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.toggle input:checked + .toggle-track { background: var(--accent); }
+.toggle input:checked + .toggle-track::after { transform: translateX(16px); }
+</style>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+let selectedFiles = [];
+let currentRunId = null;
+let scoreChart = null;
+
+// ── Navigation ────────────────────────────────────────────────────────
+function navigate(sec) {
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + sec).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.toLowerCase().includes(sec === 'config' ? 'settings' : sec)) n.classList.add('active');
+  });
+  if (sec === 'dashboard') loadDashboard();
+  if (sec === 'screen')    loadJdDropdown();
+  if (sec === 'jobs')      loadJobs();
+  if (sec === 'compare')   loadCompareList();
+  if (sec === 'config')    loadConfig();
+}
+
+// ── API helpers ────────────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const r = await fetch('/api' + path, opts);
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({ detail: r.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail));
+  }
+  return r.json();
+}
+
+function toast(msg, dur = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function showAlert(id, msg, type = 'info') {
+  document.getElementById(id).innerHTML =
+    `<div class="alert alert-${type}">${msg}</div>`;
+}
+
+// ── Score helpers ──────────────────────────────────────────────────────
+function scoreCls(s) { return s >= 7 ? 'high' : s >= 5 ? 'mid' : 'low'; }
+function scoreColor(s) {
+  return s >= 7 ? getComputedStyle(document.documentElement).getPropertyValue('--score-high').trim()
+       : s >= 5 ? getComputedStyle(document.documentElement).getPropertyValue('--score-mid').trim()
+       :          getComputedStyle(document.documentElement).getPropertyValue('--score-low').trim();
+}
+
+// ── Health check ──────────────────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const h = await api('/health');
+    const dot = document.getElementById('api-dot');
+    const txt = document.getElementById('api-status-text');
+    if (h.gemini_key_set) {
+      dot.classList.add('ok');
+      txt.textContent = h.model;
+    } else {
+      txt.textContent = 'No API key';
+      dot.classList.remove('ok');
+    }
+  } catch {
+    document.getElementById('api-status-text').textContent = 'Offline';
+  }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const [stats, history, candidates] = await Promise.all([
+      api('/stats'), api('/history'), api('/candidates?limit=10')
+    ]);
+
+    document.getElementById('stat-total').textContent = stats.candidates.total;
+    document.getElementById('stat-avg').textContent =
+      stats.candidates.total ? stats.candidates.avg_score.toFixed(1) : '—';
+    document.getElementById('stat-top').textContent =
+      stats.candidates.total ? stats.candidates.top_score.toFixed(1) : '—';
+    document.getElementById('stat-runs').textContent = stats.runs.total;
+
+    // Usage row
+    const u = stats.session;
+    document.getElementById('usage-stats').innerHTML =
+      `<span style="margin-right:24px">📥 <strong>${u.calls}</strong> API calls</span>
+       <span style="margin-right:24px">📥 <strong>${u.input_tokens.toLocaleString()}</strong> input tokens</span>
+       <span style="margin-right:24px">📤 <strong>${u.output_tokens.toLocaleString()}</strong> output tokens</span>
+       <span>📥 <strong>$${u.est_cost_usd.toFixed(5)}</strong> est. cost</span>`;
+
+    // Recent runs table
+    const runs = history.runs;
+    if (runs.length) {
+      document.getElementById('recent-runs').innerHTML =
+        `<table>
+          <thead><tr><th>Label</th><th>Date</th><th>Screened</th><th>Top Score</th><th></th></tr></thead>
+          <tbody>
+          ${runs.slice(0, 8).map(r => `
+            <tr>
+              <td><strong>${r.label}</strong><br><span style="font-size:12px;color:var(--muted)">${r.jd_snippet || ''}</span></td>
+              <td style="color:var(--muted);font-size:12.5px">${new Date(r.ts).toLocaleDateString()}</td>
+              <td>${r.screened ?? r.total ?? '—'}</td>
+              <td><span class="score-badge ${scoreCls(r.top_score)}">${r.top_score}/10</span></td>
+              <td><button class="btn btn-secondary btn-sm" onclick="loadRunResults('${r.run_id}')">View</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    // Scores chart
+    const cands = candidates.candidates.slice(0, 10);
+    if (cands.length) renderScoreChart(cands);
+
+  } catch (e) { console.error(e); }
+}
+
+function renderScoreChart(candidates) {
+  const ctx = document.getElementById('chart-scores').getContext('2d');
+  if (scoreChart) scoreChart.destroy();
+  const labels = candidates.map(c => c.candidate_id.replace(/_[a-f0-9]{4}$/, ''));
+  const data   = candidates.map(c => c.score);
+  const colors = data.map(s => scoreColor(s));
+  scoreChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors, borderRadius: 6, borderSkipped: false }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { min: 0, max: 10, ticks: { font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+        y: { ticks: { font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+async function loadRunResults(runId) {
+  navigate('screen');
+  try {
+    const run = await api('/history/' + runId);
+    renderResults(run.reports, run.run_id);
+  } catch(e) { toast('Failed to load run: ' + e.message); }
+}
+
+// ── File handling ──────────────────────────────────────────────────────
+function onFileSelect(e) { addFiles([...e.target.files]); e.target.value = ''; }
+function onDragOver(e)   { e.preventDefault(); document.getElementById('dropzone').classList.add('drag-over'); }
+function onDragLeave(e)  { document.getElementById('dropzone').classList.remove('drag-over'); }
+function onDrop(e)       { e.preventDefault(); document.getElementById('dropzone').classList.remove('drag-over'); addFiles([...e.dataTransfer.files]); }
+
+function addFiles(files) {
+  files.forEach(f => {
+    if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) selectedFiles.push(f);
+  });
+  renderFileList();
+}
+function removeFile(i) { selectedFiles.splice(i, 1); renderFileList(); }
+function renderFileList() {
+  document.getElementById('file-list').innerHTML = selectedFiles.map((f, i) =>
+    `<div class="file-chip">📄 ${f.name} <span class="remove" onclick="removeFile(${i})">×</span></div>`
+  ).join('');
+}
+
+// ── JD Library dropdown ────────────────────────────────────────────────
+async function loadJdDropdown() {
+  try {
+    const { jobs } = await api('/jobs');
+    const sel = document.getElementById('jd-library-select');
+    sel.innerHTML = '<option value="">— paste your own below —</option>' +
+      jobs.map(j => `<option value="${j.id}" data-desc="${encodeURIComponent(j.description)}">${j.name}</option>`).join('');
+  } catch {}
+}
+function loadJdFromLibrary() {
+  const sel = document.getElementById('jd-library-select');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt.dataset.desc) document.getElementById('jd-text').value = decodeURIComponent(opt.dataset.desc);
+}
+
+// ── Run Screening ──────────────────────────────────────────────────────
+async function runScreening() {
+  const jd = document.getElementById('jd-text').value.trim();
+  if (!jd) { showAlert('screen-alert', 'Please enter a job description.', 'error'); return; }
+  if (!selectedFiles.length) { showAlert('screen-alert', 'Please upload at least one resume.', 'error'); return; }
+
+  document.getElementById('screen-alert').innerHTML = '';
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;margin-right:4px"></div> Screening...';
+  document.getElementById('results-section').style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('job_description', jd);
+  fd.append('run_label', document.getElementById('run-label').value.trim());
+  fd.append('redact_pii', document.getElementById('opt-pii').checked);
+  fd.append('bias_mitigation', document.getElementById('opt-bias').checked);
+  selectedFiles.forEach(f => fd.append('resumes', f));
+
+  try {
+    const result = await fetch('/api/screen', { method: 'POST', body: fd }).then(async r => {
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ detail: r.statusText }));
+        throw new Error(typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail));
+      }
+      return r.json();
+    });
+
+    currentRunId = result.run_id;
+    renderResults(result.reports, result.run_id, result.parse_errors);
+    toast(`✅ Screened ${result.reports.length} candidate${result.reports.length !== 1 ? 's' : ''}`);
+    checkHealth();
+  } catch (e) {
+    showAlert('screen-alert', '❌ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Run Screening';
+  }
+}
+
+function renderResults(reports, runId, parseErrors = []) {
+  const sec = document.getElementById('results-section');
+  sec.style.display = 'block';
+
+  // Actions bar
+  document.getElementById('results-actions').innerHTML =
+    `<a href="/api/export/run/${runId}/csv" class="btn btn-secondary btn-sm">⬇ CSV</a>
+     <a href="/api/export/run/${runId}/json" class="btn btn-secondary btn-sm">⬇ JSON</a>`;
+
+  let html = '';
+
+  if (parseErrors.length) {
+    html += `<div class="alert alert-error" style="margin-bottom:12px">
+      ⚠️ ${parseErrors.length} file(s) could not be parsed: ${parseErrors.join(', ')}
+    </div>`;
+  }
+
+  if (!reports.length) {
+    html += `<div class="empty-state"><div class="empty-icon">🔍</div>
+      <div class="empty-text">No candidates met the minimum score threshold</div>
+      <div class="empty-sub">Try lowering the minimum score in Settings</div></div>`;
+  } else {
+    // Sort by score descending
+    const sorted = [...reports].sort((a, b) => b.score - a.score);
+    sorted.forEach((r, idx) => { html += renderResultCard(r, idx + 1); });
+  }
+
+  document.getElementById('results-list').innerHTML = html;
+  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderResultCard(r, rank) {
+  const cls = scoreCls(r.score);
+  const barPct = (r.score / 10 * 100).toFixed(0);
+  const barColor = cls === 'high' ? 'var(--score-high)' : cls === 'mid' ? 'var(--score-mid)' : 'var(--score-low)';
+  const name = r.candidate_id.replace(/_[a-f0-9]{4}$/, '').replace(/_/g, ' ');
+
+  const shineHtml = (r.shine_areas || []).map(s => `<li>${s}</li>`).join('') || '<li style="color:var(--muted)">No specific shine areas identified</li>';
+  const gapHtml   = (r.gap_areas   || []).map(g => `<li>${g}</li>`).join('') || '<li style="color:var(--muted)">No major gaps identified</li>';
+
+  const matched  = (r.matched_skills || []).map(s => `<span class="pill pill-skill">✓ ${s}</span>`).join('');
+  const missing  = (r.missing_skills  || []).map(s => `<span class="pill" style="background:#fff7ed;color:#ea580c">✗ ${s}</span>`).join('');
+
+  return `
+  <div class="result-card">
+    <div class="result-header">
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">#${rank}</div>
+        <div class="result-name">${name}</div>
+      </div>
+      <div class="result-score-wrap">
+        <div>
+          <div class="big-score ${cls}">${r.score}</div>
+          <div style="width:80px">
+            <div class="score-bar-wrap"><div class="score-bar" style="width:${barPct}%;background:${barColor}"></div></div>
+          </div>
+        </div>
+        <div class="score-denom">/10</div>
+      </div>
+    </div>
+
+    ${r.summary ? `<div class="result-summary">${r.summary}</div>` : ''}
+    ${r.experience_note ? `<div class="result-exp">📅 ${r.experience_note}</div>` : ''}
+
+    <div class="shine-gap-grid">
+      <div class="shine-gap-col shine">
+        <h4>Will shine in</h4>
+        <ul>${shineHtml}</ul>
+      </div>
+      <div class="shine-gap-col gap">
+        <h4>Needs to grow in</h4>
+        <ul>${gapHtml}</ul>
+      </div>
+    </div>
+
+    ${(matched || missing) ? `
+    <div class="skills-row">
+      <div class="skills-row-label">Skill match</div>
+      <div style="margin-top:4px">${matched}${missing ? '<span style="margin-left:6px"></span>' + missing : ''}</div>
+    </div>` : ''}
+  </div>`;
+}
+
+// ── Job Library ────────────────────────────────────────────────────────
+async function loadJobs() {
+  const { jobs } = await api('/jobs');
+  document.getElementById('job-count').textContent = `${jobs.length} job${jobs.length !== 1 ? 's' : ''} saved`;
+
+  if (!jobs.length) {
+    document.getElementById('jobs-table-wrap').innerHTML =
+      `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No saved jobs yet</div><div class="empty-sub">Create your first job description to get started</div></div>`;
+    return;
+  }
+
+  document.getElementById('jobs-table-wrap').innerHTML =
+    `<table>
+      <thead><tr><th>Name</th><th>Length</th><th>Created</th><th>Tags</th><th style="text-align:right">Actions</th></tr></thead>
+      <tbody>
+      ${jobs.map(j => `
+        <tr>
+          <td><strong>${j.name}</strong></td>
+          <td style="color:var(--muted)">${j.char_count} chars</td>
+          <td style="color:var(--muted);font-size:12.5px">${new Date(j.created_at).toLocaleDateString()}</td>
+          <td>${(j.tags||[]).map(t=>`<span class="pill pill-skill">${t}</span>`).join('')}</td>
+          <td style="text-align:right">
+            <button class="btn btn-secondary btn-sm" onclick="useJob('${j.id}')">Use</button>
+            <button class="btn btn-secondary btn-sm" onclick="editJob('${j.id}')">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteJob('${j.id}')">Delete</button>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function openJobModal(id = null) {
+  document.getElementById('jm-name').value = '';
+  document.getElementById('jm-desc').value = '';
+  document.getElementById('jm-tags').value = '';
+  document.getElementById('jm-id').value = id || '';
+  document.getElementById('job-modal-title').textContent = id ? 'Edit Job' : 'New Job Description';
+  document.getElementById('job-modal').classList.add('open');
+}
+function closeJobModal() { document.getElementById('job-modal').classList.remove('open'); }
+
+async function editJob(id) {
+  const job = await api('/jobs/' + id);
+  document.getElementById('jm-name').value = job.name;
+  document.getElementById('jm-desc').value = job.description;
+  document.getElementById('jm-tags').value = (job.tags || []).join(', ');
+  document.getElementById('jm-id').value = id;
+  document.getElementById('job-modal-title').textContent = 'Edit Job';
+  document.getElementById('job-modal').classList.add('open');
+}
+
+async function saveJob() {
+  const name = document.getElementById('jm-name').value.trim();
+  const desc = document.getElementById('jm-desc').value.trim();
+  const tagsRaw = document.getElementById('jm-tags').value.trim();
+  const id   = document.getElementById('jm-id').value;
+  if (!name || !desc) { toast('Name and description are required.'); return; }
+  const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+  try {
+    if (id) await api('/jobs/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, description: desc, tags }) });
+    else     await api('/jobs',       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, description: desc, tags }) });
+    closeJobModal();
+    loadJobs();
+    loadJdDropdown();
+    toast('Job saved ✓');
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+async function deleteJob(id) {
+  if (!confirm('Delete this job description?')) return;
+  await api('/jobs/' + id, { method: 'DELETE' });
+  loadJobs();
+  toast('Deleted');
+}
+
+function useJob(id) {
+  api('/jobs/' + id).then(j => {
+    navigate('screen');
+    setTimeout(() => {
+      document.getElementById('jd-text').value = j.description;
+      document.getElementById('jd-library-select').value = id;
+    }, 100);
+  });
+}
+
+// ── Compare ────────────────────────────────────────────────────────────
+async function loadCompareList() {
+  const { candidates } = await api('/candidates?limit=50');
+  if (!candidates.length) return;
+  document.getElementById('compare-select-list').innerHTML =
+    `<div class="compare-select" id="compare-checks">
+      ${candidates.map(c => {
+        const name = c.candidate_id.replace(/_[a-f0-9]{4}$/, '').replace(/_/g, ' ');
+        const cls = scoreCls(c.score);
+        return `<label class="compare-check">
+          <input type="checkbox" value="${c.candidate_id}" onchange="updateCompareBtn()">
+          ${name}
+          <span class="score-badge ${cls}" style="font-size:11px">${c.score}/10</span>
+        </label>`;
+      }).join('')}
+    </div>`;
+}
+
+function updateCompareBtn() {
+  const checked = document.querySelectorAll('#compare-checks input:checked').length;
+  const btn = document.getElementById('compare-btn');
+  btn.disabled = checked < 2 || checked > 6;
+  btn.textContent = checked >= 2 ? `Compare ${checked} Candidates` : 'Select at least 2';
+}
+
+async function runComparison() {
+  const ids = [...document.querySelectorAll('#compare-checks input:checked')].map(i => i.value);
+  if (ids.length < 2) return;
+  try {
+    const result = await api('/candidates/compare', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidate_ids: ids }),
+    });
+    renderComparison(result);
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+function renderComparison(result) {
+  const wrap = document.getElementById('compare-results');
+  const n = result.candidates.length;
+  const cols = n <= 2 ? '1fr 1fr' : n === 3 ? '1fr 1fr 1fr' : `repeat(${n}, 1fr)`;
+
+  const html = result.candidates.map(c => {
+    const isWinner = c.candidate_id === result.winner;
+    const name = c.candidate_id.replace(/_[a-f0-9]{4}$/, '').replace(/_/g, ' ');
+    const cls = scoreCls(c.score);
+    const shines = (c.shine_areas || []).map(s => `<li style="font-size:12.5px;padding:3px 0">${s}</li>`).join('');
+    const gaps   = (c.gap_areas   || []).map(g => `<li style="font-size:12.5px;padding:3px 0">${g}</li>`).join('');
+    return `
+      <div class="compare-col" style="${isWinner ? 'border:1.5px solid var(--accent);' : ''}">
+        <div class="compare-col-name">${name} ${isWinner ? '<span class="compare-winner-badge">🏆 Top pick</span>' : ''}</div>
+        <div class="compare-score-row">
+          <span class="big-score ${cls}" style="font-size:26px">${c.score}</span>
+          <span class="score-denom">/10</span>
+        </div>
+        <div style="margin-bottom:10px">
+          <div class="score-bar-wrap"><div class="score-bar" style="width:${c.score*10}%;background:${cls==='high'?'var(--score-high)':cls==='mid'?'var(--score-mid)':'var(--score-low)'}"></div></div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--shine);margin-bottom:4px">WILL SHINE IN</div>
+        <ul style="list-style:none;margin-bottom:12px">${shines || '<li style="color:var(--muted);font-size:12px">—</li>'}</ul>
+        <div style="font-size:12px;font-weight:700;color:var(--gap);margin-bottom:4px">NEEDS TO GROW</div>
+        <ul style="list-style:none">${gaps || '<li style="color:var(--muted);font-size:12px">—</li>'}</ul>
+        ${c.summary ? `<div style="margin-top:10px;font-size:12.5px;color:var(--muted);line-height:1.5;border-top:1px solid var(--border);padding-top:10px">${c.summary}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">Comparison</div>
+      <div style="display:grid;grid-template-columns:${cols};gap:14px">${html}</div>
+    </div>`;
+}
+
+// ── Config ─────────────────────────────────────────────────────────────
+async function loadConfig() {
+  try {
+    const [cfg, setup, cacheM] = await Promise.all([
+      api('/config'), api('/setup-config'), api('/cache/metrics')
+    ]);
+
+    if (setup.api_key_set) {
+      document.getElementById('cfg-api-key').placeholder = '(API key is set — enter new one to change)';
+      showAlert('config-setup-alert', '✅ API key is configured.', 'success');
+    } else {
+      showAlert('config-setup-alert', '⚠️ No API key set. Add your Gemini key to start screening.', 'info');
+    }
+
+    const mdl = document.getElementById('cfg-model');
+    [...mdl.options].forEach(o => o.selected = o.value === setup.model);
+
+    const eff = cfg.effective;
+    const ms = document.getElementById('cfg-min-score');
+    ms.value = eff.min_score ?? 5;
+    document.getElementById('min-score-val').textContent = (eff.min_score ?? 5) + '/10';
+
+    const tk = document.getElementById('cfg-top-k');
+    tk.value = eff.top_k ?? 10;
+    document.getElementById('top-k-val').textContent = eff.top_k ?? 10;
+
+    const wk = document.getElementById('cfg-workers');
+    wk.value = eff.max_workers ?? 4;
+    document.getElementById('workers-val').textContent = eff.max_workers ?? 4;
+
+    document.getElementById('cache-metrics').innerHTML =
+      `<strong>${cacheM.total_entries}</strong> cached entries &nbsp;·&nbsp;
+       Hit rate: <strong>${cacheM.hit_rate_pct}%</strong> &nbsp;·&nbsp;
+       Hits: ${cacheM.hits} &nbsp; Misses: ${cacheM.misses}`;
+  } catch (e) { console.error(e); }
+}
+
+function toggleApiKeyVisibility() {
+  const inp = document.getElementById('cfg-api-key');
+  const btn = document.getElementById('toggle-key-btn');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'Hide'; }
+  else { inp.type = 'password'; btn.textContent = 'Show'; }
+}
+
+async function saveSetupConfig() {
+  const key   = document.getElementById('cfg-api-key').value.trim();
+  const model = document.getElementById('cfg-model').value;
+  if (!key && !model) { toast('Enter an API key or choose a model.'); return; }
+  try {
+    await api('/setup-config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: key || undefined, model }),
+    });
+    toast('✅ API settings saved');
+    checkHealth();
+    loadConfig();
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+async function saveScreeningConfig() {
+  const body = {
+    min_score: parseFloat(document.getElementById('cfg-min-score').value),
+    top_k:     parseInt(document.getElementById('cfg-top-k').value),
+    max_workers: parseInt(document.getElementById('cfg-workers').value),
+  };
+  try {
+    await api('/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    toast('✅ Preferences saved');
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+async function clearCache() {
+  if (!confirm('Clear all cached results? You will be re-billed for re-running the same resumes.')) return;
+  await api('/cache', { method: 'DELETE' });
+  toast('Cache cleared');
+  loadConfig();
+}
+
+// ── Init ───────────────────────────────────────────────────────────────
+checkHealth();
+loadDashboard();
+setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>

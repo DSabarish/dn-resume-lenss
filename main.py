@@ -55,6 +55,7 @@ _candidate_store: Dict[str, dict] = {}
 # Initialize with default jobs
 def _initialize_default_jobs():
     """Initialize the job library with default job descriptions"""
+    # DS-Fresher job
     ds_fresher_id = "job_ds_fresher_default"
     if ds_fresher_id not in _job_library:
         _job_library[ds_fresher_id] = {
@@ -64,6 +65,18 @@ def _initialize_default_jobs():
             "tags": ["data science", "python", "machine learning", "fresher", "entry level"],
             "created_at": "2024-01-01T00:00:00Z",
             "char_count": 847,
+        }
+    
+    # SAP Consultant job
+    sap_consultant_id = "job_sap_consultant_default"
+    if sap_consultant_id not in _job_library:
+        _job_library[sap_consultant_id] = {
+            "id": sap_consultant_id,
+            "name": "SAP-Consultant-3yrs",
+            "description": "We are seeking an experienced SAP Consultant with 3+ years of hands-on experience in SAP implementation, configuration, and support. The ideal candidate will have expertise in SAP modules such as FI/CO, MM, SD, or HR, with strong analytical and problem-solving skills. Responsibilities include analyzing business requirements, configuring SAP systems, conducting user training, and providing ongoing support. The role requires excellent communication skills to work with cross-functional teams and clients. Experience with SAP S/4HANA, ABAP programming, and integration technologies is preferred. The consultant will participate in full-cycle SAP projects from blueprint to go-live, ensure system optimization, and maintain documentation. Strong understanding of business processes, ability to work in fast-paced environments, and SAP certification are highly valued.",
+            "tags": ["sap", "consultant", "fi/co", "mm", "sd", "s4hana", "abap", "3 years experience"],
+            "created_at": "2024-01-01T00:00:01Z",
+            "char_count": 892,
         }
 
 # Initialize default jobs on startup
@@ -288,7 +301,6 @@ async def screen_candidates(
     resumes: List[UploadFile] = File(...),
     job_description: str = Form(...),
     job_id_ref: str = Form(""),
-    run_label: str = Form(""),
     redact_pii: bool = Form(True),
     bias_mitigation: bool = Form(True),
 ):
@@ -360,7 +372,7 @@ async def screen_candidates(
 
     _run_history[run_id] = {
         "run_id": run_id,
-        "label": run_label or f"Run #{len(_run_history) + 1}",
+        "label": f"Run #{len(_run_history) + 1}",
         "ts": utc_now_iso(),
         "jd_snippet": (job_description[:120] + "...") if len(job_description) > 120 else job_description,
         "job_id_ref": job_id_ref,
@@ -504,9 +516,12 @@ async def list_cache_entries():
 
 @app.delete("/api/cache")
 async def clear_cache():
+    """Clear both Gemini cache and candidate/run data"""
     get_cache().clear()
-    await _log("INFO", "cache_cleared")
-    return {"message": "Cache cleared."}
+    _candidate_store.clear()
+    _run_history.clear()
+    await _log("INFO", "cache_and_data_cleared")
+    return {"message": "Cache and candidate data cleared."}
 
 
 # ── Export ────────────────────────────────────────────────────────────────

@@ -297,10 +297,6 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
               <textarea id="jd-text" rows="12" placeholder="Paste the full job description here. Be specific about required skills, experience level, and what you're building. The more detail, the better the evaluation."></textarea>
               <div class="form-hint">Include skills needed, experience level, and what success looks like in this role.</div>
             </div>
-            <div class="form-row">
-              <label>Run Label (optional)</label>
-              <input type="text" id="run-label" placeholder="e.g. Backend Engineer — April batch">
-            </div>
           </div>
         </div>
 
@@ -458,10 +454,10 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
         </div>
 
         <div class="config-section">
-          <h3>🗄️ Cache</h3>
+          <h3>🔄 Reset Application</h3>
           <div id="cache-metrics" style="font-size:13.5px;color:var(--muted);margin-bottom:12px">Loading...</div>
-          <button class="btn btn-danger btn-sm" onclick="clearCache()">Clear Cache</button>
-          <div class="form-hint" style="margin-top:6px">Cache stores Gemini results for 24h. Clear it if you change the job description significantly.</div>
+          <button class="btn btn-danger btn-sm" onclick="clearCache()">🗑️ Reset Everything</button>
+          <div class="form-hint" style="margin-top:6px">⚠️ Completely resets the app to fresh state. Clears all runs, candidates, cache, and dashboard data. Cannot be undone!</div>
         </div>
       </div>
     </div>
@@ -706,7 +702,6 @@ async function runScreening() {
 
   const fd = new FormData();
   fd.append('job_description', jd);
-  fd.append('run_label', document.getElementById('run-label').value.trim());
   fd.append('redact_pii', document.getElementById('opt-pii').checked);
   fd.append('bias_mitigation', document.getElementById('opt-bias').checked);
   selectedFiles.forEach(f => fd.append('resumes', f));
@@ -1062,9 +1057,74 @@ async function saveScreeningConfig() {
 }
 
 async function clearCache() {
-  if (!confirm('Clear all cached results? You will be re-billed for re-running the same resumes.')) return;
-  await api('/cache', { method: 'DELETE' });
-  toast('Cache cleared');
+  if (!confirm('⚠️ RESET EVERYTHING? This will clear all data and reset the app to fresh state. You will lose all screening runs, candidates, and cached results.')) return;
+  
+  try {
+    await api('/cache', { method: 'DELETE' });
+    
+    // Reset all UI elements to initial state
+    resetAllUIElements();
+    
+    toast('✅ All data cleared - App reset to fresh state');
+  } catch (error) {
+    toast('❌ Error clearing data: ' + error.message);
+  }
+}
+
+function resetAllUIElements() {
+  // Reset dashboard stats
+  document.getElementById('stat-total').textContent = '—';
+  document.getElementById('stat-avg').textContent = '—';
+  document.getElementById('stat-top').textContent = '—';
+  document.getElementById('stat-runs').textContent = '—';
+  
+  // Reset recent runs to empty state
+  document.getElementById('recent-runs').innerHTML = 
+    '<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">No runs yet</div><div class="empty-sub">Upload resumes to get started</div></div>';
+  
+  // Reset usage stats
+  document.getElementById('usage-stats').innerHTML = 
+    '<span style="margin-right:24px">🔗 <strong>0</strong> API calls</span><span style="margin-right:24px">💰 <strong>$0.00</strong> estimated cost</span><span>📊 <strong>0</strong> candidates stored</span>';
+  
+  // Clear chart if it exists
+  if (scoreChart) {
+    scoreChart.destroy();
+    scoreChart = null;
+  }
+  
+  // Reset compare section
+  const compareList = document.getElementById('compare-select-list');
+  if (compareList) {
+    compareList.innerHTML = 
+      '<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-text">No candidates yet</div><div class="empty-sub">Run a screening first</div></div>';
+  }
+  
+  // Clear compare results
+  const compareResults = document.getElementById('compare-results');
+  if (compareResults) {
+    compareResults.innerHTML = '';
+  }
+  
+  // Reset screening form
+  document.getElementById('jd-text').value = '';
+  document.getElementById('jd-library-select').selectedIndex = 0;
+  
+  // Clear file list
+  selectedFiles = [];
+  document.getElementById('file-list').innerHTML = '';
+  
+  // Hide results section
+  const resultsSection = document.getElementById('results-section');
+  if (resultsSection) {
+    resultsSection.style.display = 'none';
+  }
+  
+  // Reset current run ID
+  currentRunId = null;
+  
+  // Navigate to dashboard to show fresh state
+  navigate('dashboard');
+}
   loadConfig();
 }
 

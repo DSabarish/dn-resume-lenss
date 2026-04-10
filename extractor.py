@@ -37,6 +37,7 @@ _SCHEMA = {
         "education": ["string"],
         "years_experience": "number",
         "recent_roles": ["string"],
+        "avg_tenure_months": "number — average months per role across all jobs; 0 if unknown",
         "parse_confidence": "number 0-1",
     },
     "job": {
@@ -153,6 +154,7 @@ async def parse_resume_and_job(
         jd = raw_json.get("job", {})
 
         rd["years_experience"] = clamp(float(rd.get("years_experience", 0)), 0, 60)
+        rd["avg_tenure_months"] = clamp(float(rd.get("avg_tenure_months", 0)), 0, 600)
         rd["parse_confidence"] = clamp(float(rd.get("parse_confidence", 0.5)), 0, 1)
         rd["candidate_id"] = rd.get("candidate_id", cid)
         rd["pii_redacted"] = True

@@ -29,7 +29,7 @@ Be direct and practical. No corporate jargon. No sugarcoating.
 Return ONLY valid JSON. No markdown fences."""
 
 _EVALUATION_PROMPT = """\
-Evaluate this candidate for the job below. Be honest — s can't afford bad hires.
+Evaluate this candidate for the job below. Be honest — startups can't afford bad hires.
 
 JOB:
 {job_json}
@@ -42,10 +42,11 @@ Return ONLY this JSON (no extra fields, no markdown):
   "score": <integer 1-10>,
   "matched_skills": ["skills they have that this job needs"],
   "missing_skills": ["skills the job needs that they clearly lack"],
-  "shine_areas": ["up to 4 specific things they will genuinely be great at in THIS role"],
-  "gap_areas": ["up to 4 honest gaps or risks for THIS role"],
+  "shine_areas": ["up to 4 SHORT phrases: why this candidate fits THIS job — lead with matching skills and relevant experience, be specific"],
+  "gap_areas": ["up to 4 SHORT phrases: honest gaps or risks for THIS role — be specific, mention job hopping if avg_tenure_months < 12"],
+  "red_flags": ["up to 3 SHORT phrases — devil's advocate view: frequent job changes, unexplained gaps, title inflation, overqualification, missing must-haves. Empty list [] if none."],
   "experience_note": "one sentence: their experience level vs what the role needs",
-  "summary": "sentence 1: what makes them interesting for this role. Sentence 2: the main risk or concern."
+  "summary": "sentence 1: what makes them a fit for this role. Sentence 2: the main risk or concern."
 }}
 
 Score guide:
@@ -55,7 +56,9 @@ Score guide:
   3-4  = Stretch — significant gaps, high onboarding cost
   1-2  = Not ready — wrong role or wrong stage
 
-shine_areas and gap_areas must be specific to THIS job, not generic.
+shine_areas: short phrases only (e.g. "5 yrs React", "led 3 product launches", "fintech domain match"). Not sentences.
+gap_areas: short phrases only (e.g. "no team lead experience", "avg 8 months/role", "no Python"). Not sentences.
+red_flags: short phrases only (e.g. "4 jobs in 2 years", "6-month gap unexplained", "overqualified for IC role"). Not sentences.
 Do not say 'pass' or 'fail'. Do not use corporate-speak.
 """
 
@@ -143,6 +146,7 @@ async def evaluate_candidate(
             missing_skills=raw.get("missing_skills", [])[:10],
             shine_areas=raw.get("shine_areas", [])[:4],
             gap_areas=raw.get("gap_areas", [])[:4],
+            red_flags=raw.get("red_flags", [])[:3],
             experience_note=str(raw.get("experience_note", ""))[:300],
             summary=str(raw.get("summary", ""))[:500],
         )

@@ -427,7 +427,7 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
         </div>
 
         <div class="config-section">
-          <h3>🎯 Screening Preferences</h3>
+          <h3> Screening Preferences</h3>
           <div class="form-row">
             <label>Minimum Score to Show <span id="min-score-val" style="color:var(--accent);font-weight:700"></span></label>
             <div class="range-row">
@@ -769,11 +769,18 @@ function renderResultCard(r, rank) {
   const barColor = cls === 'high' ? 'var(--score-high)' : cls === 'mid' ? 'var(--score-mid)' : 'var(--score-low)';
   const name = r.candidate_id.replace(/_[a-f0-9]{4}$/, '').replace(/_/g, ' ');
 
-  const shineHtml = (r.shine_areas || []).map(s => `<li>${s}</li>`).join('') || '<li style="color:var(--muted)">No specific shine areas identified</li>';
-  const gapHtml   = (r.gap_areas   || []).map(g => `<li>${g}</li>`).join('') || '<li style="color:var(--muted)">No major gaps identified</li>';
+  const shineHtml = (r.shine_areas || []).map(s => `<li>${s}</li>`).join('') || '<li style="color:var(--muted)">—</li>';
+  const gapHtml   = (r.gap_areas   || []).map(g => `<li>${g}</li>`).join('') || '<li style="color:var(--muted)">—</li>';
 
   const matched  = (r.matched_skills || []).map(s => `<span class="pill pill-skill">✓ ${s}</span>`).join('');
   const missing  = (r.missing_skills  || []).map(s => `<span class="pill" style="background:#fff7ed;color:#ea580c">✗ ${s}</span>`).join('');
+
+  const redFlags = (r.red_flags || []);
+  const redFlagsHtml = redFlags.length ? `
+    <div class="skills-row" style="border-top:1px solid #fee2e2;margin-top:12px;padding-top:10px">
+      <div class="skills-row-label" style="color:#dc2626">⚠ Red Flags</div>
+      <div style="margin-top:4px">${redFlags.map(f => `<span class="pill" style="background:#fee2e2;color:#dc2626">${f}</span>`).join('')}</div>
+    </div>` : '';
 
   return `
   <div class="result-card">
@@ -798,11 +805,11 @@ function renderResultCard(r, rank) {
 
     <div class="shine-gap-grid">
       <div class="shine-gap-col shine">
-        <h4>Will shine in</h4>
+        <h4>Why they fit</h4>
         <ul>${shineHtml}</ul>
       </div>
       <div class="shine-gap-col gap">
-        <h4>Needs to grow in</h4>
+        <h4>Gaps</h4>
         <ul>${gapHtml}</ul>
       </div>
     </div>
@@ -812,6 +819,7 @@ function renderResultCard(r, rank) {
       <div class="skills-row-label">Skill match</div>
       <div style="margin-top:4px">${matched}${missing ? '<span style="margin-left:6px"></span>' + missing : ''}</div>
     </div>` : ''}
+    ${redFlagsHtml}
   </div>`;
 }
 
@@ -949,6 +957,12 @@ function renderComparison(result) {
     const cls = scoreCls(c.score);
     const shines = (c.shine_areas || []).map(s => `<li style="font-size:12.5px;padding:3px 0">${s}</li>`).join('');
     const gaps   = (c.gap_areas   || []).map(g => `<li style="font-size:12.5px;padding:3px 0">${g}</li>`).join('');
+    const flags  = (c.red_flags   || []);
+    const flagsHtml = flags.length ? `
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid #fee2e2">
+        <div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:4px">⚠ RED FLAGS</div>
+        ${flags.map(f => `<span class="pill" style="background:#fee2e2;color:#dc2626;font-size:11.5px">${f}</span>`).join('')}
+      </div>` : '';
     return `
       <div class="compare-col" style="${isWinner ? 'border:1.5px solid var(--accent);' : ''}">
         <div class="compare-col-name">${name} ${isWinner ? '<span class="compare-winner-badge">🏆 Top pick</span>' : ''}</div>
@@ -959,11 +973,12 @@ function renderComparison(result) {
         <div style="margin-bottom:10px">
           <div class="score-bar-wrap"><div class="score-bar" style="width:${c.score*10}%;background:${cls==='high'?'var(--score-high)':cls==='mid'?'var(--score-mid)':'var(--score-low)'}"></div></div>
         </div>
-        <div style="font-size:12px;font-weight:700;color:var(--shine);margin-bottom:4px">WILL SHINE IN</div>
+        <div style="font-size:12px;font-weight:700;color:var(--shine);margin-bottom:4px">WHY THEY FIT</div>
         <ul style="list-style:none;margin-bottom:12px">${shines || '<li style="color:var(--muted);font-size:12px">—</li>'}</ul>
-        <div style="font-size:12px;font-weight:700;color:var(--gap);margin-bottom:4px">NEEDS TO GROW</div>
+        <div style="font-size:12px;font-weight:700;color:var(--gap);margin-bottom:4px">GAPS</div>
         <ul style="list-style:none">${gaps || '<li style="color:var(--muted);font-size:12px">—</li>'}</ul>
         ${c.summary ? `<div style="margin-top:10px;font-size:12.5px;color:var(--muted);line-height:1.5;border-top:1px solid var(--border);padding-top:10px">${c.summary}</div>` : ''}
+        ${flagsHtml}
       </div>`;
   }).join('');
 

@@ -19,6 +19,7 @@ class ResumeProfile(BaseModel):
     education: List[str] = []
     years_experience: float = Field(default=0.0, ge=0.0)
     recent_roles: List[str] = []
+    avg_tenure_months: float = Field(default=0.0, ge=0.0)  # avg months per role
     parse_confidence: float = Field(default=0.0, ge=0, le=1)
     pii_redacted: bool = True
     raw_text_snippet: str = ""
@@ -49,8 +50,9 @@ class StartupReport(BaseModel):
     score: float = Field(ge=1.0, le=10.0)          # out of 10
     matched_skills: List[str] = []                  # skills they have that the JD needs
     missing_skills: List[str] = []                  # skills from JD they lack
-    shine_areas: List[str] = []                     # max 4 — where they'll genuinely excel
-    gap_areas: List[str] = []                       # max 4 — honest gaps
+    shine_areas: List[str] = []                     # max 4 — why they fit THIS job (skills + experience)
+    gap_areas: List[str] = []                       # max 4 — honest gaps for THIS role
+    red_flags: List[str] = []                       # max 3 — devil's advocate: job hopping, gaps, risks
     experience_note: str = ""                       # one sentence on experience fit
     summary: str = ""                               # 2 sentences: strength + main risk
     from_cache: bool = False

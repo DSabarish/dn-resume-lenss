@@ -188,6 +188,7 @@ Thumbs.db
 # Upload directories (if any)
 uploads/
 temp_uploads/
+sample_test_inputs/
 
 # Docker
 .dockerignore
